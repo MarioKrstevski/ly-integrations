@@ -10,7 +10,7 @@ const githubWebhook = Github.defineWebhook({
     return {
       owner: variables.owner,
       repo: variables.repo,
-      events: ["push"],
+      events: ["workflow_run"],
     };
   },
 });
@@ -24,17 +24,32 @@ defineAction({
   apps: ["slack"],
   variables: ["channel"],
   run: async ({ data, auths, variables }) => {
-    const pushData = Github.pushPayload(data);
+    const workflowRunPayload = Github.workflowRunPayload(data);
+ 
+    console.info("Got a workflow run payload");
+ 
+    if (workflowRunPayload.workflowRun.conclusion === 'success') {
+      const slack = new Slack({ auth: auths.slack });
+ 
+      await slack.postMessage({
+        channel: variables.channel,
+        text: `Workflow ran successfully on repo: ${workflowRunPayload.repository.fullName}`,
+      });
+      console.info("Posted message to Slack")
+    } else {
+      console.info(`Conclusion was ${workflowRunPayload.workflowRun.conclusion}, skipping...`)
+    }
+    // const pushData = Github.pushPayload(data);
 
-    console.info("Got a push payload");
+    // console.info("Got a push payload");
 
-    const slack = new Slack({ auth: auths.slack });
+    // const slack = new Slack({ auth: auths.slack });
 
-    await slack.postMessage({
-      channel: variables.channel,
-      text: `Got push event on repo: ${pushData.repository.fullName}`,
-    });
+    // await slack.postMessage({
+    //   channel: variables.channel,
+    //   text: `Got push event on repo: ${pushData.repository.fullName}`,
+    // });
 
-    console.info("Posted message to Slack");
+    // console.info("Posted message to Slack");
   },
 });
